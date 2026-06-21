@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Suminagashi — tinta sonora</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#efe9dc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Suminagashi">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{ --paper:#efe9dc; --ink-text:#2a2722;
+    --panel:rgba(247,243,234,.80); --panel-border:rgba(42,39,34,.14); }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--paper)}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink-text);-webkit-tap-highlight-color:transparent;transition:background .4s}
+  #stage{position:fixed;inset:0;display:block;touch-action:none;cursor:crosshair}
+
+  #title{position:fixed;top:24px;left:28px;z-index:5;pointer-events:none;user-select:none}
+  #title .name{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    font-size:25px;font-weight:600;letter-spacing:.02em;color:var(--ink-text)}
+  #title .roman{margin-top:3px;font-size:9px;letter-spacing:.4em;color:rgba(42,39,34,.5);text-transform:uppercase}
+
+  #lang{position:fixed;top:24px;right:26px;z-index:7;background:var(--panel);
+    border:1px solid var(--panel-border);border-radius:9px;backdrop-filter:blur(10px);
+    font-size:10px;letter-spacing:.16em;color:var(--ink-text);padding:7px 11px;cursor:pointer}
+  #lang:hover{background:rgba(255,255,255,.6)}
+
+  #meters{position:fixed;top:62px;right:26px;z-index:6;background:var(--panel);
+    border:1px solid var(--panel-border);border-radius:12px;padding:0 0 12px;
+    backdrop-filter:blur(10px);width:210px;box-shadow:0 6px 24px rgba(0,0,0,.09)}
+  #meters-head{display:flex;align-items:center;justify-content:space-between;
+    padding:11px 14px 9px;cursor:move;user-select:none}
+  #meters-head h4{font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+    color:rgba(42,39,34,.45);font-weight:600}
+  #meters-hide{border:0;background:transparent;cursor:pointer;color:rgba(42,39,34,.45);
+    font-size:16px;line-height:.6;padding:0 3px}
+  #meters-hide:hover{color:var(--ink-text)}
+  #meters-show{position:fixed;top:62px;right:26px;z-index:6;display:none;background:var(--panel);
+    border:1px solid var(--panel-border);border-radius:10px;backdrop-filter:blur(10px);cursor:pointer;
+    font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-text);padding:8px 12px}
+  #meters-show:hover{background:rgba(255,255,255,.6)}
+  .meter{padding:0 14px;margin-bottom:8px}.meter:last-child{margin-bottom:0}
+  .meter .lab{display:flex;justify-content:space-between;font-size:10.5px;
+    color:rgba(42,39,34,.72);margin-bottom:3px}
+  .meter .lab .val{font-variant-numeric:tabular-nums;color:rgba(42,39,34,.5)}
+  .bar{height:3px;background:rgba(42,39,34,.1);border-radius:2px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0%;border-radius:2px;transition:width .08s linear}
+  #b-rms>i{background:#6b6b6b}#b-cent>i{background:#d83b30}#b-spr>i{background:#2c6fc0}
+  #b-flat>i{background:#2f9d68}#b-irr>i{background:#b98a3a}#b-noi>i{background:#7d5ba6}
+  #b-inh>i{background:#c2693f}#b-chr>i{background:#888}#b-sus>i{background:#8a6d3b}
+
+  #bar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
+    display:flex;align-items:center;gap:5px;background:var(--panel);
+    border:1px solid var(--panel-border);border-radius:16px;padding:8px 10px;
+    backdrop-filter:blur(12px);box-shadow:0 8px 30px rgba(0,0,0,.1);max-width:96vw;flex-wrap:wrap;justify-content:center}
+  .btn{border:0;background:transparent;color:var(--ink-text);cursor:pointer;border-radius:10px;
+    padding:8px 12px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    transition:background .15s,color .15s,opacity .15s;min-width:46px}
+  .btn:hover{background:rgba(42,39,34,.06)}
+  .btn .lab{font-size:11px;letter-spacing:.03em}
+  .btn .chip{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.25);background:#efe9dc}
+  .btn.active{background:var(--ink-text)}
+  .btn.active .lab{color:var(--paper)}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .sep{width:1px;height:30px;background:rgba(42,39,34,.12);margin:0 3px}
+  .ctl{display:flex;flex-direction:column;align-items:center;gap:3px;padding:0 4px}
+  .ctl-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:rgba(42,39,34,.5)}
+  #rng-pers{width:76px;accent-color:#8a6d3b;cursor:pointer}
+  #cam-wrap{position:fixed;left:18px;bottom:84px;z-index:7;width:170px;border-radius:10px;
+    overflow:hidden;display:none;border:1px solid var(--panel-border);box-shadow:0 4px 16px rgba(0,0,0,.18);background:#000;user-select:none}
+  #cam-head{display:flex;align-items:center;justify-content:space-between;gap:6px;height:22px;
+    padding:0 4px 0 9px;background:rgba(20,20,22,.92);cursor:move}
+  #cam-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#cfc7b6}
+  #cam-min{width:22px;height:18px;border:0;border-radius:5px;background:rgba(255,255,255,.12);
+    color:#ece7db;cursor:pointer;font-size:13px;line-height:1;padding:0}
+  #cam-min:hover{background:rgba(255,255,255,.24)}
+  #cam-body{position:relative;width:170px;height:128px}
+  #cam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+  #cam-ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #cam-wrap.min #cam-body{display:none}
+  #bar-show{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:6;display:none;
+    background:var(--panel);border:1px solid var(--panel-border);border-radius:12px;backdrop-filter:blur(10px);
+    cursor:pointer;font-size:14px;line-height:1;color:var(--ink-text);padding:8px 16px}
+  #bar-show:hover{background:rgba(255,255,255,.6)}
+  #bar-hide .lab{font-size:13px;line-height:1}
+  .on-dark #bar-show{background:rgba(28,28,30,.72);border-color:rgba(255,255,255,.16);color:#ece7db}
+  body.clean #title,body.clean #lang,body.clean #foot,body.clean #bar,
+  body.clean #meters,body.clean #bar-show,body.clean #meters-show{display:none !important}
+  .on-dark .ctl-l{color:rgba(236,231,219,.55)}
+
+  #swatches{display:flex;align-items:center;gap:7px;padding:0 4px}
+  .sw{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+    transition:transform .12s}
+  .sw:hover{transform:scale(1.12)}
+  .sw.active{border-color:var(--ink-text)}
+  #sw-jun{background:conic-gradient(from 0deg,#d83b30,#2c6fc0,#2f9d68,#1a2230,#d83b30)}
+
+  #hint{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;
+    text-align:center;pointer-events:none;transition:opacity .8s;max-width:80vw}
+  #hint .big{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:18px;
+    color:rgba(42,39,34,.5);letter-spacing:.04em;margin-bottom:8px}
+  #hint .sub{font-size:11px;color:rgba(42,39,34,.4);letter-spacing:.06em}
+  .gone{opacity:0 !important}
+  #foot{position:fixed;right:22px;bottom:9px;z-index:5;font-size:8px;letter-spacing:.26em;
+    color:rgba(42,39,34,.32);text-transform:uppercase}
+  #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:20;
+    background:var(--paper);text-align:center;padding:40px;font-size:14px;color:var(--ink-text)}
+
+  /* ---- tema escuro (fundos escuros) ---- */
+  body.on-dark{ --ink-text:#ece7db; }
+  .on-dark #title .roman,.on-dark #foot{ color:rgba(236,231,219,.5) }
+  .on-dark #lang,.on-dark #meters,.on-dark #meters-show,.on-dark #bar{
+    background:rgba(28,28,30,.72);border-color:rgba(255,255,255,.16);color:#ece7db }
+  .on-dark #meters-head h4{ color:rgba(236,231,219,.5) }
+  .on-dark .meter .lab{ color:rgba(236,231,219,.8) }
+  .on-dark .meter .lab .val{ color:rgba(236,231,219,.55) }
+  .on-dark .bar{ background:rgba(255,255,255,.12) }
+  .on-dark .btn{ color:#ece7db }
+  .on-dark .btn.active{ background:#ece7db }
+  .on-dark .btn.active .lab{ color:#1c1c1e }
+  .on-dark #hint .big{ color:rgba(236,231,219,.6) }
+  .on-dark #hint .sub{ color:rgba(236,231,219,.45) }
+  @media (max-width:760px){
+    #title{top:14px;left:16px}
+    #title .name{font-size:20px}
+    #title .roman{font-size:8px;letter-spacing:.3em}
+    #lang{top:14px;right:14px;padding:6px 9px}
+    #meters{width:186px;right:14px;top:52px}
+    #meters-show{top:52px;right:14px}
+    #bar{gap:3px;padding:7px 8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+      max-width:94vw;border-radius:14px;bottom:calc(14px + env(safe-area-inset-bottom))}
+    #bar::-webkit-scrollbar{display:none}
+    .btn{min-width:0;padding:7px 8px}
+    .btn .lab{font-size:10px}
+    .ctl{padding:0 3px}.ctl-l{font-size:7px}
+    #rng-pers,#rng-sens{width:56px}
+    .sw{width:21px;height:21px}#swatches{gap:5px}
+    .sep{height:26px}
+    #bar-show{bottom:calc(12px + env(safe-area-inset-bottom))}
+    #cam-wrap{width:144px;bottom:calc(74px + env(safe-area-inset-bottom))}
+    #cam-body{width:144px;height:108px}
+    #foot{display:none}
+  }
+</style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div id="title"><div class="name">Suminagashi</div><div class="roman" data-i18n="subtitle">tinta sonora</div></div>
+
+  <button id="lang">EN</button>
+
+  <div id="meters">
+    <div id="meters-head"><h4 data-i18n="m_head">Descritores</h4><button id="meters-hide" title="ocultar">–</button></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_rms">RMS</span><span class="val" id="v-rms">—</span></div><div class="bar" id="b-rms"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_cent">Centroide</span><span class="val" id="v-cent">— Hz</span></div><div class="bar" id="b-cent"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_spr">Dispersão</span><span class="val" id="v-spr">— Hz</span></div><div class="bar" id="b-spr"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_flat">Planura</span><span class="val" id="v-flat">—</span></div><div class="bar" id="b-flat"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_irr">Irregularidade</span><span class="val" id="v-irr">—</span></div><div class="bar" id="b-irr"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_noi">Ruído</span><span class="val" id="v-noi">—</span></div><div class="bar" id="b-noi"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_inh">Inarmonicidade</span><span class="val" id="v-inh">—</span></div><div class="bar" id="b-inh"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_chr">Croma (Scriabin)</span><span class="val" id="v-chr">—</span></div><div class="bar" id="b-chr"><i></i></div></div>
+    <div class="meter"><div class="lab"><span data-i18n="m_sus">Sustentação</span><span class="val" id="v-sus">—</span></div><div class="bar" id="b-sus"><i></i></div></div>
+  </div>
+  <button id="meters-show" data-i18n="m_show">Descritores</button>
+
+  <div id="bar">
+    <div id="swatches">
+      <div class="sw active" id="sw-jun" data-mode="auto" data-pt="Por harmonia (Scriabin)" data-en="By harmony (Scriabin)"></div>
+      <div class="sw" data-mode="0" style="background:#1a2230" data-pt="Preto (sumi)" data-en="Black (sumi)"></div>
+      <div class="sw" data-mode="1" style="background:#2c6fc0" data-pt="Índigo (ai)" data-en="Indigo (ai)"></div>
+      <div class="sw" data-mode="2" style="background:#d83b30" data-pt="Vermelhão (shu)" data-en="Vermilion (shu)"></div>
+      <div class="sw" data-mode="3" style="background:#2f9d68" data-pt="Verde (matsuba)" data-en="Green (matsuba)"></div>
+    </div>
+    <div class="sep"></div>
+    <button class="btn" id="btn-mic"><span class="lab" data-i18n="b_mic">Microfone</span></button>
+    <button class="btn" id="btn-file"><span class="lab" data-i18n="b_file">Arquivo</span></button>
+    <button class="btn" id="btn-play" disabled><span class="lab" data-i18n="b_play">Tocar</span></button>
+    <button class="btn" id="btn-track" title="Rastreio por câmera: Mãos / Rosto · Camera tracking: Hands / Face"><span class="lab" id="track-lab">Rastreio</span></button>
+    <div class="sep"></div>
+    <button class="btn" id="btn-pos" title="Posição / Position"><span class="lab" id="pos-lab">Radial</span></button>
+    <div class="ctl"><span class="ctl-l" data-i18n="c_sens">Sensibilidade</span><input type="range" id="rng-sens" min="0" max="100" value="60"></div>
+    <div class="ctl"><span class="ctl-l" data-i18n="c_pers">Persistência</span><input type="range" id="rng-pers" min="0" max="100" value="80"></div>
+    <div class="sep"></div>
+    <button class="btn" id="btn-bg"><span class="chip" id="bg-chip"></span><span class="lab" data-i18n="b_bg">Fundo</span></button>
+    <button class="btn" id="btn-auto"><span class="lab" data-i18n="b_auto">Automático</span></button>
+    <button class="btn" id="btn-wash"><span class="lab" data-i18n="b_wash">Limpar</span></button>
+    <div class="sep"></div>
+    <button class="btn" id="bar-hide" title="Ocultar / Hide"><span class="lab">⌄</span></button>
+  </div>
+  <button id="bar-show" title="Controles / Controls">⌃</button>
+
+  <div id="hint"><div class="big" data-i18n="hint_big">Pinte com som</div>
+    <div class="sub" data-i18n="hint">Ative o microfone, carregue um áudio ou trace a tela</div></div>
+  <div id="foot">It Looks Like Suminagashi · v2.8</div>
+  <div id="cam-wrap">
+    <div id="cam-head"><span id="cam-title">câmera</span><button id="cam-min" title="Minimizar / Minimize">–</button></div>
+    <div id="cam-body"><video id="cam" playsinline muted></video><canvas id="cam-ov"></canvas></div>
+  </div>
+  <div id="err"></div>
+
+  <input type="file" id="file-input" accept="audio/*" style="display:none">
+  <audio id="player" crossorigin="anonymous"></audio>
+
+<script>
+"use strict";
+/* =========================================================================
+   It Looks Like Suminagashi — v2.2
+   Navier-Stokes estável (WebGL2) + vorticity confinement → filamentos sedosos.
+   Descritores nativos (Web Audio): RMS, Centroide, Dispersão, Planura, Fluxo,
+   + (fase 2-A) Irregularidade, Ruído (ZCR), Inarmonicidade.
+   "Sustentação" é derivada: integra quanto tempo o RMS persiste → espessura.
+   ========================================================================= */
+
+/* ---------------- i18n (PT / EN) ---------------- */
+const I18N = {
+  pt:{ subtitle:'tinta sonora', m_head:'Descritores', m_show:'Descritores',
+       m_rms:'RMS', m_cent:'Centroide', m_spr:'Dispersão', m_flat:'Planura',
+       m_irr:'Irregularidade', m_noi:'Ruído', m_inh:'Inarmonicidade', m_chr:'Croma (Scriabin)', m_sus:'Sustentação',
+       b_mic:'Microfone', b_file:'Arquivo', b_play:'Tocar', b_pause:'Pausar',
+       b_bg:'Fundo', b_auto:'Automático', b_wash:'Limpar', c_pers:'Persistência', c_sens:'Sensibilidade', b_hands:'Mãos',
+       t_off:'Rastreio', t_hands:'Mãos', t_face:'Rosto', cam_title:'câmera',
+       hint_big:'Pinte com som',
+       hint:'Ative o microfone, carregue um áudio ou trace a tela',
+       micErr:'Não foi possível acessar o microfone — verifique a permissão do navegador.',
+       noWebGL:'Este navegador não suporta WebGL2 com texturas de ponto flutuante, necessário para a simulação de fluido.' },
+  en:{ subtitle:'sound ink', m_head:'Descriptors', m_show:'Descriptors',
+       m_rms:'RMS', m_cent:'Centroid', m_spr:'Spread', m_flat:'Flatness',
+       m_irr:'Irregularity', m_noi:'Noisiness', m_inh:'Inharmonicity', m_chr:'Chroma (Scriabin)', m_sus:'Sustain',
+       b_mic:'Microphone', b_file:'File', b_play:'Play', b_pause:'Pause',
+       b_bg:'Background', b_auto:'Auto', b_wash:'Wash', c_pers:'Persistence', c_sens:'Sensitivity', b_hands:'Hands',
+       t_off:'Tracking', t_hands:'Hands', t_face:'Face', cam_title:'camera',
+       hint_big:'Paint with sound',
+       hint:'Enable the microphone, load audio, or trace the screen',
+       micErr:'Could not access the microphone — check the browser permission.',
+       noWebGL:'This browser does not support WebGL2 with float textures, required for the fluid simulation.' }
+};
+let LANG='pt';
+function setLang(l){
+  LANG=l; const d=I18N[l];
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ if(d[el.dataset.i18n]) el.textContent=d[el.dataset.i18n]; });
+  document.getElementById('lang').textContent = l==='pt'?'EN':'PT';
+  document.documentElement.lang = l==='pt'?'pt-br':'en';
+  const play=document.getElementById('btn-play').querySelector('.lab');
+  play.textContent = (source==='file' && !player.paused)? d.b_pause : d.b_play;
+  document.querySelectorAll('.sw').forEach(s=>{ if(s.dataset[l]) s.title=s.dataset[l]; });
+  const bgb=document.getElementById('btn-bg'); if(bgb) bgb.title=(l==='pt'?'Fundo: ':'Background: ')+BG[bgIndex][l];
+  updateTrackUI();
+}
+document.getElementById('lang').addEventListener('click',()=>setLang(LANG==='pt'?'en':'pt'));
+
+/* ---------------- Pigmentos (tonalidades da referência, 0..1) ---------------- */
+const PIG=[ [0.102,0.135,0.188],   // sumi
+            [0.173,0.435,0.753],   // ai
+            [0.847,0.231,0.188],   // shu
+            [0.184,0.616,0.408] ]; // matsuba
+function pigByCentroid(t){
+  t=Math.max(0,Math.min(1,t))*(PIG.length-1);
+  const i=Math.floor(t),f=t-i,a=PIG[i],b=PIG[Math.min(i+1,PIG.length-1)];
+  return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f];
+}
+let colorMode='auto';
+
+/* ---------------- Sinestesia de Scriabin (croma → 12 cores) ----------------
+   Mapeamento do "clavier à lumières" (Prometheus): cada classe de altura
+   recebe a cor associada por Scriabin. Índice 0=C, 1=C#, ... 11=B. */
+const SCRIABIN=[
+  [0.84,0.17,0.17], // C  vermelho
+  [0.48,0.25,0.69], // C# violeta
+  [0.91,0.78,0.29], // D  amarelo
+  [0.54,0.63,0.66], // D# aço
+  [0.62,0.78,0.91], // E  azul-celeste
+  [0.55,0.12,0.12], // F  vermelho profundo
+  [0.17,0.44,0.84], // F# azul vivo
+  [0.91,0.48,0.17], // G  laranja
+  [0.42,0.24,0.63], // G# púrpura
+  [0.23,0.63,0.35], // A  verde
+  [0.85,0.54,0.63], // A# rosa
+  [0.42,0.65,0.88]  // B  azul pálido
+];
+const NOTE=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+/* ---------------- Fundos (mais diversidade de contraste) ---------------- */
+const BG=[
+  {pt:'Washi',  en:'Washi',  c:[0.937,0.914,0.863], dark:false},
+  {pt:'Sumi',   en:'Sumi',   c:[0.078,0.090,0.110], dark:true },
+  {pt:'Índigo', en:'Indigo', c:[0.086,0.141,0.227], dark:true },
+  {pt:'Ardósia',en:'Slate',  c:[0.227,0.247,0.278], dark:true },
+  {pt:'Branco', en:'White',  c:[0.972,0.965,0.945], dark:false}
+];
+let bgIndex=0;
+function applyBG(){ const b=BG[bgIndex];
+  document.body.classList.toggle('on-dark', b.dark);
+  const css=`rgb(${(b.c[0]*255)|0},${(b.c[1]*255)|0},${(b.c[2]*255)|0})`;
+  document.body.style.background=css;
+  const chip=document.getElementById('bg-chip'); if(chip) chip.style.background=css;
+  const bgb=document.getElementById('btn-bg'); if(bgb) bgb.title=(LANG==='pt'?'Fundo: ':'Background: ')+b[LANG];
+}
+
+/* ============================== WEBGL =================================== */
+const canvas=document.getElementById('stage');
+const gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false});
+let glOK = !!gl;
+if(glOK){ const ext=gl.getExtension('EXT_color_buffer_float'); if(!ext) glOK=false;
+  gl.getExtension('OES_texture_float_linear'); }
+function showErr(){ const e=document.getElementById('err'); e.style.display='flex';
+  e.textContent=I18N[LANG].noWebGL; }
+if(!glOK) showErr();
+
+const MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.maxTouchPoints>1 && Math.min(screen.width,screen.height)<820);
+const SIM_RES=128, DYE_RES=MOBILE?512:1024, PRESSURE_ITER=MOBILE?16:24;
+let velocity,dye,divergence,curlFBO,pressure;
+let progAdvect,progDiverg,progCurl,progVort,progPressure,progGradient,progSplat,progDisplay,progClear;
+let quadVAO;
+
+function compile(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s),src); return s; }
+function program(vs,fs){ const p=gl.createProgram();
+  gl.attachShader(p,compile(gl.VERTEX_SHADER,vs)); gl.attachShader(p,compile(gl.FRAGMENT_SHADER,fs));
+  gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(p));
+  const u={}; const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);
+  for(let i=0;i<n;i++){const info=gl.getActiveUniform(p,i); u[info.name]=gl.getUniformLocation(p,info.name);}
+  return {p,u}; }
+
+const VERT=`#version 300 es
+in vec2 aPos; out vec2 vUv,vL,vR,vT,vB; uniform vec2 texelSize;
+void main(){ vUv=aPos*0.5+0.5;
+  vL=vUv-vec2(texelSize.x,0.); vR=vUv+vec2(texelSize.x,0.);
+  vT=vUv+vec2(0.,texelSize.y); vB=vUv-vec2(0.,texelSize.y);
+  gl_Position=vec4(aPos,0.,1.); }`;
+const H=`#version 300 es
+precision highp float; precision highp sampler2D; out vec4 frag;`;
+
+const F_ADVECT=H+`
+in vec2 vUv; uniform sampler2D uVelocity,uSource; uniform vec2 texelSize;
+uniform float dt,dissipation;
+void main(){ vec2 coord=vUv-dt*texture(uVelocity,vUv).xy*texelSize;
+  frag=dissipation*texture(uSource,coord); }`;
+const F_DIVERG=H+`
+in vec2 vUv,vL,vR,vT,vB; uniform sampler2D uVelocity;
+void main(){ float L=texture(uVelocity,vL).x, R=texture(uVelocity,vR).x;
+  float T=texture(uVelocity,vT).y, B=texture(uVelocity,vB).y;
+  float div=0.5*((R-L)+(T-B)); frag=vec4(div,0.,0.,1.); }`;
+const F_CURL=H+`
+in vec2 vUv,vL,vR,vT,vB; uniform sampler2D uVelocity;
+void main(){ float L=texture(uVelocity,vL).y, R=texture(uVelocity,vR).y;
+  float T=texture(uVelocity,vT).x, B=texture(uVelocity,vB).x;
+  float curl=0.5*((R-L)-(T-B)); frag=vec4(curl,0.,0.,1.); }`;
+const F_VORT=H+`
+in vec2 vUv,vL,vR,vT,vB; uniform sampler2D uVelocity,uCurl; uniform float curlAmount,dt;
+void main(){ float L=texture(uCurl,vL).x, R=texture(uCurl,vR).x;
+  float T=texture(uCurl,vT).x, B=texture(uCurl,vB).x, C=texture(uCurl,vUv).x;
+  vec2 force=0.5*vec2(abs(T)-abs(B), abs(R)-abs(L));
+  force/=length(force)+1e-4; force*=curlAmount*C; force.y*=-1.;
+  vec2 v=texture(uVelocity,vUv).xy; v+=force*dt; v=clamp(v,-1000.,1000.);
+  frag=vec4(v,0.,1.); }`;
+const F_PRESSURE=H+`
+in vec2 vUv,vL,vR,vT,vB; uniform sampler2D uPressure,uDivergence;
+void main(){ float L=texture(uPressure,vL).x,R=texture(uPressure,vR).x;
+  float T=texture(uPressure,vT).x,B=texture(uPressure,vB).x;
+  float div=texture(uDivergence,vUv).x;
+  frag=vec4((L+R+T+B-div)*0.25,0.,0.,1.); }`;
+const F_GRADIENT=H+`
+in vec2 vUv,vL,vR,vT,vB; uniform sampler2D uPressure,uVelocity;
+void main(){ float L=texture(uPressure,vL).x,R=texture(uPressure,vR).x;
+  float T=texture(uPressure,vT).x,B=texture(uPressure,vB).x;
+  vec2 v=texture(uVelocity,vUv).xy; v-=0.5*vec2(R-L,T-B);
+  frag=vec4(v,0.,1.); }`;
+const F_SPLAT=H+`
+in vec2 vUv; uniform sampler2D uTarget; uniform float aspect,radius;
+uniform vec3 color; uniform vec2 point;
+void main(){ vec2 p=vUv-point; p.x*=aspect;
+  vec3 splat=exp(-dot(p,p)/radius)*color;
+  frag=vec4(texture(uTarget,vUv).xyz+splat,1.); }`;
+const F_CLEAR=H+`
+in vec2 vUv; uniform sampler2D uTarget; uniform float value;
+void main(){ frag=value*texture(uTarget,vUv); }`;
+const F_DISPLAY=H+`
+in vec2 vUv; uniform sampler2D uDye; uniform vec2 screen; uniform vec3 uPaper;
+float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+void main(){ vec4 d=texture(uDye,vUv);
+  float dens=clamp(max(d.r,max(d.g,d.b))*1.4,0.,1.);
+  vec3 pig=d.rgb/max(max(d.r,max(d.g,d.b)),1e-4);
+  vec3 col=mix(uPaper,pig,dens);
+  col*=0.97+0.03*hash(floor(vUv*screen*0.5));
+  float r=length(vUv-0.5); col*=1.0-0.16*r*r;
+  frag=vec4(col,1.); }`;
+
+function texelOf(w,h){ return [1/w,1/h]; }
+function createFBO(w,h,filter){
+  const tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filter);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filter);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,w,h,0,gl.RGBA,gl.HALF_FLOAT,null);
+  const fbo=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+  gl.viewport(0,0,w,h); gl.clear(gl.COLOR_BUFFER_BIT);
+  return {tex,fbo,w,h,texel:texelOf(w,h),
+    bind(unit){ gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D,tex); return unit; }};
+}
+function createDouble(w,h,filter){ let a=createFBO(w,h,filter),b=createFBO(w,h,filter);
+  return {w,h,texel:texelOf(w,h),
+    get read(){return a;}, get write(){return b;}, swap(){const t=a;a=b;b=t;}}; }
+
+function initGL(){
+  quadVAO=gl.createVertexArray(); gl.bindVertexArray(quadVAO);
+  const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+  progAdvect=program(VERT,F_ADVECT); progDiverg=program(VERT,F_DIVERG);
+  progCurl=program(VERT,F_CURL); progVort=program(VERT,F_VORT);
+  progPressure=program(VERT,F_PRESSURE); progGradient=program(VERT,F_GRADIENT);
+  progSplat=program(VERT,F_SPLAT); progDisplay=program(VERT,F_DISPLAY);
+  progClear=program(VERT,F_CLEAR);
+  velocity=createDouble(SIM_RES,SIM_RES,gl.LINEAR);
+  dye=createDouble(DYE_RES,DYE_RES,gl.LINEAR);
+  divergence=createFBO(SIM_RES,SIM_RES,gl.NEAREST);
+  curlFBO=createFBO(SIM_RES,SIM_RES,gl.NEAREST);
+  pressure=createDouble(SIM_RES,SIM_RES,gl.NEAREST);
+}
+function blit(target){ gl.bindFramebuffer(gl.FRAMEBUFFER,target?target.fbo:null);
+  gl.viewport(0,0,target?target.w:gl.drawingBufferWidth,target?target.h:gl.drawingBufferHeight);
+  gl.bindVertexArray(quadVAO); gl.drawArrays(gl.TRIANGLE_STRIP,0,4); }
+function use(pr,texel){ gl.useProgram(pr.p); if(pr.u.texelSize&&texel) gl.uniform2f(pr.u.texelSize,texel[0],texel[1]); }
+
+function splat(x,y,dx,dy,colorRGB,radiusUV){
+  use(progSplat,velocity.texel);
+  gl.uniform1i(progSplat.u.uTarget,velocity.read.bind(0));
+  gl.uniform1f(progSplat.u.aspect,canvas.width/canvas.height);
+  gl.uniform2f(progSplat.u.point,x,y);
+  gl.uniform3f(progSplat.u.color,dx,dy,0.);
+  gl.uniform1f(progSplat.u.radius,radiusUV*radiusUV);
+  blit(velocity.write); velocity.swap();
+  gl.uniform1i(progSplat.u.uTarget,dye.read.bind(0));
+  gl.uniform2f(progSplat.u.point,x,y);
+  gl.uniform3f(progSplat.u.color,colorRGB[0],colorRGB[1],colorRGB[2]);
+  gl.uniform1f(progSplat.u.radius,(radiusUV*1.1)*(radiusUV*1.1));
+  blit(dye.write); dye.swap();
+}
+function step(dt,curlAmount,velDiss,dyeDiss){
+  use(progCurl,velocity.texel); gl.uniform1i(progCurl.u.uVelocity,velocity.read.bind(0));
+  blit(curlFBO);
+  use(progVort,velocity.texel);
+  gl.uniform1i(progVort.u.uVelocity,velocity.read.bind(0));
+  gl.uniform1i(progVort.u.uCurl,curlFBO.bind(1));
+  gl.uniform1f(progVort.u.curlAmount,curlAmount); gl.uniform1f(progVort.u.dt,dt);
+  blit(velocity.write); velocity.swap();
+  use(progDiverg,velocity.texel); gl.uniform1i(progDiverg.u.uVelocity,velocity.read.bind(0));
+  blit(divergence);
+  use(progClear,pressure.texel); gl.uniform1i(progClear.u.uTarget,pressure.read.bind(0));
+  gl.uniform1f(progClear.u.value,0.85); blit(pressure.write); pressure.swap();
+  use(progPressure,pressure.texel);
+  gl.uniform1i(progPressure.u.uDivergence,divergence.bind(0));
+  for(let i=0;i<PRESSURE_ITER;i++){
+    gl.uniform1i(progPressure.u.uPressure,pressure.read.bind(1));
+    blit(pressure.write); pressure.swap();
+  }
+  use(progGradient,velocity.texel);
+  gl.uniform1i(progGradient.u.uPressure,pressure.read.bind(0));
+  gl.uniform1i(progGradient.u.uVelocity,velocity.read.bind(1));
+  blit(velocity.write); velocity.swap();
+  use(progAdvect,velocity.texel);
+  gl.uniform1i(progAdvect.u.uVelocity,velocity.read.bind(0));
+  gl.uniform1i(progAdvect.u.uSource,velocity.read.bind(0));
+  gl.uniform1f(progAdvect.u.dt,dt); gl.uniform1f(progAdvect.u.dissipation,velDiss);
+  blit(velocity.write); velocity.swap();
+  // advect dye usando o texel da VELOCIDADE (correção de escala)
+  use(progAdvect,velocity.texel);
+  gl.uniform1i(progAdvect.u.uVelocity,velocity.read.bind(0));
+  gl.uniform1i(progAdvect.u.uSource,dye.read.bind(1));
+  gl.uniform1f(progAdvect.u.dt,dt); gl.uniform1f(progAdvect.u.dissipation,dyeDiss);
+  blit(dye.write); dye.swap();
+}
+function display(){ use(progDisplay,null); gl.uniform1i(progDisplay.u.uDye,dye.read.bind(0));
+  gl.uniform2f(progDisplay.u.screen,canvas.width,canvas.height);
+  const c=BG[bgIndex].c; gl.uniform3f(progDisplay.u.uPaper,c[0],c[1],c[2]); blit(null); }
+function clearDye(){ use(progClear,dye.texel); gl.uniform1i(progClear.u.uTarget,dye.read.bind(0));
+  gl.uniform1f(progClear.u.value,0.); blit(dye.write); dye.swap();
+  use(progClear,velocity.texel); gl.uniform1i(progClear.u.uTarget,velocity.read.bind(0));
+  gl.uniform1f(progClear.u.value,0.); blit(velocity.write); velocity.swap(); }
+
+/* ============================== ÁUDIO ================================== */
+let actx=null,analyser=null,freq=null,time=null;
+let prevNm=null, susView=0;
+let micStream=null,micNode=null,mediaNode=null,source=null;
+const player=document.getElementById('player');
+function initCtx(){ if(actx)return;
+  actx=new (window.AudioContext||window.webkitAudioContext)();
+  analyser=actx.createAnalyser(); analyser.fftSize=2048; analyser.smoothingTimeConstant=0.6;
+  freq=new Float32Array(analyser.frequencyBinCount); time=new Float32Array(analyser.fftSize);
+  buildAudioTables(); }
+
+/* ---- tabelas (croma + banco mel p/ MFCC), construídas uma vez ---- */
+let pcOfBin=null, melFB=null; const NUM_MEL=26;
+function buildAudioTables(){
+  const N=analyser.frequencyBinCount, sr=actx.sampleRate, binHz=sr/analyser.fftSize;
+  pcOfBin=new Int8Array(N);
+  for(let i=0;i<N;i++){ const f=i*binHz;
+    if(f<20){pcOfBin[i]=-1;continue;}
+    const midi=69+12*Math.log2(f/440); pcOfBin[i]=((Math.round(midi)%12)+12)%12; }
+  const nyq=sr/2, mel=f=>2595*Math.log10(1+f/700), imel=m=>700*(Math.pow(10,m/2595)-1);
+  const binOf=f=>Math.floor(f/binHz);
+  melFB=[];
+  for(let m=1;m<=NUM_MEL;m++){
+    const l=binOf(imel(mel(0)+(mel(nyq)-mel(0))*(m-1)/(NUM_MEL+1)));
+    const c=binOf(imel(mel(0)+(mel(nyq)-mel(0))*(m  )/(NUM_MEL+1)));
+    const r=binOf(imel(mel(0)+(mel(nyq)-mel(0))*(m+1)/(NUM_MEL+1)));
+    melFB.push({l,c,r}); }
+}
+/* ---- f0 por autocorrelação (janela de 1024) + interpolação parabólica ---- */
+function estimateF0(){
+  const sr=actx.sampleRate, Nac=Math.min(MOBILE?512:1024,time.length);
+  let r0=0; for(let i=0;i<Nac;i++) r0+=time[i]*time[i];
+  if(r0<1e-3) return 0;
+  const minLag=Math.max(2,Math.floor(sr/1100)), maxLag=Math.min(Nac-2,Math.floor(sr/70));
+  let bestLag=-1,best=0;
+  for(let lag=minLag;lag<=maxLag;lag++){ let s=0;
+    for(let i=0;i<Nac-lag;i++) s+=time[i]*time[i+lag];
+    if(s>best){best=s;bestLag=lag;} }
+  if(bestLag<2 || best/(r0+1e-9)<0.2) return 0;        // sem altura clara
+  let sm=0,sp=0; const lm=bestLag-1,lp=bestLag+1;
+  for(let i=0;i<Nac-lp;i++){ sm+=time[i]*time[i+lm]; sp+=time[i]*time[i+lp]; }
+  const dd=sm-2*best+sp; let shift=0; if(Math.abs(dd)>1e-9) shift=0.5*(sm-sp)/dd;
+  return sr/(bestLag+shift);
+}
+/* ---- inarmonicidade REAL: desvio dos parciais medidos vs. n·f0 ---- */
+function inharmFromF0(f0,mags,binHz,N){
+  if(f0<=0) return 0;
+  let num=0,den=0;
+  for(let h=1;h<=12;h++){ const fh=h*f0, cb=fh/binHz;
+    const lo=Math.max(1,Math.floor(cb-cb*0.04)), hi=Math.min(N-2,Math.ceil(cb+cb*0.04));
+    if(lo>=hi) break;
+    let mi=lo,mv=mags[lo];
+    for(let b=lo+1;b<=hi;b++){ if(mags[b]>mv){mv=mags[b];mi=b;} }
+    if(mv<=0) continue;
+    const a=mags[mi-1]||0,c=mags[mi+1]||0, ddv=a-2*mv+c;
+    let d=0; if(Math.abs(ddv)>1e-9) d=0.5*(a-c)/ddv;
+    const fpk=(mi+d)*binHz;
+    num+=mv*Math.abs(fpk-fh); den+=mv*fh; }
+  return den>1e-9? Math.min(1,(num/den)*6) : 0;
+}
+function readDescriptors(){
+  analyser.getFloatFrequencyData(freq); analyser.getFloatTimeDomainData(time);
+  const N=freq.length,sr=actx.sampleRate,binHz=sr/analyser.fftSize;
+  let sum=0,sumF=0,logSum=0,used=0,peakIdx=1,peakVal=0; const mags=new Float32Array(N);
+  for(let i=1;i<N;i++){ let m=Math.pow(10,freq[i]/20); if(!isFinite(m))m=0;
+    mags[i]=m; const f=i*binHz; sum+=m; sumF+=m*f; logSum+=Math.log(m+1e-9); used++;
+    if(m>peakVal){peakVal=m;peakIdx=i;} }
+  const centroidHz=sum>1e-6?sumF/sum:0; let varSum=0;
+  for(let i=1;i<N;i++){const f=i*binHz; varSum+=mags[i]*(f-centroidHz)*(f-centroidHz);}
+  const spreadHz=sum>1e-6?Math.sqrt(varSum/sum):0;
+  const geo=Math.exp(logSum/used),ar=sum/used;
+  const flatness=ar>1e-9?Math.min(1,geo/ar):0;
+  let sq=0; for(let i=0;i<time.length;i++)sq+=time[i]*time[i];
+  const rms=Math.sqrt(sq/time.length);
+  // fluxo espectral (ataque)
+  let flux=0; const inv=1/(sum+1e-9);
+  if(!prevNm||prevNm.length!==N) prevNm=new Float32Array(N);
+  for(let i=1;i<N;i++){ const nm=mags[i]*inv; const diff=nm-prevNm[i]; if(diff>0)flux+=diff; prevNm[i]=nm; }
+  // FASE 2-A: irregularidade (Jensen), ruído (ZCR)
+  let irrN=0,irrD=0; for(let i=1;i<N-1;i++){ const dm=mags[i]-mags[i+1]; irrN+=dm*dm; irrD+=mags[i]*mags[i]; }
+  const irregularity = irrD>1e-12? Math.min(1, irrN/irrD) : 0;
+  let zc=0; for(let i=1;i<time.length;i++){ if((time[i-1]<0)!==(time[i]<0)) zc++; }
+  const noisiness = Math.min(1,(zc/time.length)*3);
+  // FASE 2-B: inarmonicidade REAL (f0 + desvio dos parciais)
+  const f0=estimateF0();
+  const inharmonicity=inharmFromF0(f0,mags,binHz,N);
+  // croma (12 classes) → classe dominante (Scriabin)
+  let dominantPC=0,chromaConf=0;
+  if(pcOfBin){ const chroma=new Float32Array(12);
+    for(let i=1;i<N;i++){ const pc=pcOfBin[i]; if(pc>=0) chroma[pc]+=mags[i]; }
+    let dv=0,cs=0; for(let p=0;p<12;p++){ cs+=chroma[p]; if(chroma[p]>dv){dv=chroma[p];dominantPC=p;} }
+    chromaConf = cs>1e-9? dv/cs : 0; }
+  // MFCC (coef. 1 e 2) → projeção 2D para a posição da injeção
+  let mfcc1=0,mfcc2=0;
+  if(melFB){ const logMel=new Float32Array(NUM_MEL);
+    for(let m=0;m<NUM_MEL;m++){ const fb=melFB[m]; let e=0;
+      for(let b=fb.l;b<=fb.r;b++){ if(b<1||b>=N)continue;
+        const w=b<=fb.c?(fb.c===fb.l?1:(b-fb.l)/(fb.c-fb.l)):(fb.r===fb.c?1:(fb.r-b)/(fb.r-fb.c));
+        e+=mags[b]*Math.max(0,w); }
+      logMel[m]=Math.log(e+1e-6); }
+    for(let m=0;m<NUM_MEL;m++){ const a=Math.PI/NUM_MEL*(m+0.5);
+      mfcc1+=logMel[m]*Math.cos(a); mfcc2+=logMel[m]*Math.cos(a*2); } }
+  return {centroidHz,spreadHz,flatness,flux,rms,irregularity,noisiness,inharmonicity,
+          dominantPC,chromaConf,mfcc1,mfcc2}; }
+function centroidT(hz){ if(hz<=0)return 0; const lo=Math.log2(80),hi=Math.log2(8000);
+  return Math.max(0,Math.min(1,(Math.log2(hz)-lo)/(hi-lo))); }
+
+let lastOnset=0;
+const ONSET_FLOOR=0.012, FLUX_THRESH=0.045, REFRACTORY=110, SUSTAIN_CAP=1.3;
+let brushOn=false, sustain=0, brushColor=[0,0,0], brushX=0.5, brushY=0.5, brushHX=1, brushHY=0, brushSpin=0;
+let junIdx=0, posMode='radial', persistence=0.8, sensitivity=0.6;
+let m1m=0,m1v=1,m2m=0,m2v=1;                 // estatísticas EMA p/ normalizar MFCC
+function updateMfccStats(d){ const a=0.02;
+  m1m+=a*(d.mfcc1-m1m); m1v+=a*((d.mfcc1-m1m)*(d.mfcc1-m1m)-m1v);
+  m2m+=a*(d.mfcc2-m2m); m2v+=a*((d.mfcc2-m2m)*(d.mfcc2-m2m)-m2v); }
+function newStrokeColor(d){ if(colorMode!=='auto') return PIG[colorMode];
+  return SCRIABIN[d.dominantPC]; }                      // auto: croma → cor de Scriabin
+// posição inicial + direção (heading) do traço, conforme o modo
+function strokePos(d){
+  if(posMode==='timbre'){                                // MFCC normalizado (z-score) → x,y
+    const z1=(d.mfcc1-m1m)/(Math.sqrt(Math.max(m1v,1e-6))+1e-3);
+    const z2=(d.mfcc2-m2m)/(Math.sqrt(Math.max(m2v,1e-6))+1e-3);
+    const ang=Math.random()*6.283;
+    return { x:0.5+Math.tanh(z1*0.7)*0.43, y:0.5+Math.tanh(z2*0.7)*0.43, hx:Math.cos(ang), hy:Math.sin(ang) };
+  }
+  // croma → ângulo (altura → direção)
+  const theta=(d.dominantPC/12)*6.283 + (centroidT(d.centroidHz)-0.5)*0.9 + (Math.random()-0.5)*0.4;
+  let startR=0.06;
+  if(posMode==='hybrid'){                                // MFCC normalizado → raio inicial (timbre → distância)
+    const z1=(d.mfcc1-m1m)/(Math.sqrt(Math.max(m1v,1e-6))+1e-3);
+    const z2=(d.mfcc2-m2m)/(Math.sqrt(Math.max(m2v,1e-6))+1e-3);
+    startR=0.05+Math.min(1,Math.hypot(z1,z2)/2.2)*0.40;
+  }
+  return { x:0.5+Math.cos(theta)*startR, y:0.5+Math.sin(theta)*startR, hx:Math.cos(theta), hy:Math.sin(theta) };
+}
+function audioBrush(d,now,dt){
+  const floorEff = 0.030 - sensitivity*0.026;            // sensibilidade → limiar de energia (RMS)
+  const fluxEff  = 0.090 - sensitivity*0.072;            // sensibilidade → limiar de ataque (fluxo)
+  if(d.rms < floorEff){ brushOn=false; sustain=0; susView=0; return; }   // release (silêncio)
+  const strong = d.flux>fluxEff*2.2;                     // só ataque FORTE inicia novo traço
+  if(!brushOn || strong){                                // novo traço (após silêncio ou ataque forte)
+    lastOnset=now; brushOn=true; sustain=0;
+    brushColor=newStrokeColor(d);
+    const p=strokePos(d);
+    brushX=Math.max(0.05,Math.min(0.95,p.x)); brushY=Math.max(0.05,Math.min(0.95,p.y));
+    brushHX=p.hx; brushHY=p.hy; brushSpin=(Math.random()-0.5)*1.4;       // curvatura do traço
+  } else {                                               // continua o MESMO traço — caminha pela tela
+    sustain+=dt;
+    const speed=0.06 + Math.min(1,d.rms*4)*0.34;         // RMS → comprimento/velocidade do traço
+    brushX+=brushHX*speed*dt; brushY+=brushHY*speed*dt;
+    if(brushX<0.04||brushX>0.96){ brushHX*=-1; brushX=Math.max(0.04,Math.min(0.96,brushX)); } // reflete nas bordas
+    if(brushY<0.04||brushY>0.96){ brushHY*=-1; brushY=Math.max(0.04,Math.min(0.96,brushY)); }
+    const a=brushSpin*dt + (Math.random()-0.5)*d.irregularity*0.4;       // serpenteia (irregularidade)
+    const ca=Math.cos(a),sa=Math.sin(a), nh=brushHX*ca-brushHY*sa, nv=brushHX*sa+brushHY*ca;
+    brushHX=nh; brushHY=nv;
+  }
+  const grow=Math.min(sustain,SUSTAIN_CAP)/SUSTAIN_CAP; susView=grow;
+  const scatter=d.irregularity*0.025 + d.noisiness*0.03;
+  const jx=(Math.random()-0.5)*scatter, jy=(Math.random()-0.5)*scatter;
+  const rad=0.004 + grow*0.020 + Math.min(1,d.spreadHz/4000)*0.006 + d.noisiness*0.004; // espessura
+  const amt=(0.22+d.rms*0.5)*(0.6+0.4*grow);
+  const F=80+d.rms*700;
+  splat(brushX+jx,brushY+jy, brushHX*F, brushHY*F,
+    [brushColor[0]*amt,brushColor[1]*amt,brushColor[2]*amt],rad);
+}
+function set(id,t){const e=document.getElementById(id);if(e)e.textContent=t;}
+function bar(id,v){const e=document.querySelector('#'+id+'>i');if(e)e.style.width=(Math.max(0,Math.min(1,v))*100).toFixed(0)+'%';}
+function updateMeters(d){
+  if(d){
+    set('v-rms',d.rms.toFixed(3)); bar('b-rms',Math.min(1,d.rms*4));
+    set('v-cent',(d.centroidHz|0)+' Hz'); bar('b-cent',centroidT(d.centroidHz));
+    set('v-spr',(d.spreadHz|0)+' Hz'); bar('b-spr',Math.min(1,d.spreadHz/4000));
+    set('v-flat',d.flatness.toFixed(3)); bar('b-flat',d.flatness);
+    set('v-irr',d.irregularity.toFixed(3)); bar('b-irr',d.irregularity);
+    set('v-noi',d.noisiness.toFixed(3)); bar('b-noi',d.noisiness);
+    set('v-inh',d.inharmonicity.toFixed(3)); bar('b-inh',d.inharmonicity);
+    if(d.dominantPC!=null){ const sc=SCRIABIN[d.dominantPC],
+      rgb=`rgb(${sc[0]*255|0},${sc[1]*255|0},${sc[2]*255|0})`;
+      const ve=document.getElementById('v-chr'); if(ve){ve.textContent=NOTE[d.dominantPC];ve.style.color=rgb;}
+      bar('b-chr',d.chromaConf); const bi=document.querySelector('#b-chr>i'); if(bi)bi.style.background=rgb; }
+  }
+  set('v-sus',susView.toFixed(2)); bar('b-sus',susView);
+}
+
+/* ---------------- modo automático ---------------- */
+let autoOn=false,autoPhase=0,autoAtk=0,autoPC=0;
+function autoSynthetic(now){ autoPhase+=0.012;
+  let flux=0; if(now-autoAtk>820){autoAtk=now;flux=1;autoPC=(autoPC+7)%12;}  // troca de altura
+  return { centroidHz:200*Math.pow(20,(Math.sin(autoPhase*1.3)+1)/2),
+    spreadHz:1200+1700*((Math.sin(autoPhase*0.7)+1)/2),
+    flatness:0.15+0.35*((Math.sin(autoPhase*2.1)+1)/2),
+    irregularity:0.2+0.3*((Math.sin(autoPhase*2.7)+1)/2),
+    noisiness:0.15+0.3*((Math.sin(autoPhase*1.1)+1)/2),
+    inharmonicity:0.1+0.3*((Math.sin(autoPhase*0.9)+1)/2),
+    dominantPC:autoPC, chromaConf:0.5,
+    mfcc1:Math.sin(autoPhase*1.9)*5, mfcc2:Math.cos(autoPhase*1.27)*5,
+    flux, rms:0.09+0.05*((Math.sin(autoPhase*1.7)+1)/2) }; }
+
+/* ============================== LOOP ================================== */
+let lastT=performance.now();
+let curlSm=18;
+function frame(){
+  const now=performance.now(); let dt=(now-lastT)/1000; lastT=now; if(dt>1/30)dt=1/30;
+  const live=source&&actx&&(source==='mic'||(source==='file'&&!player.paused));
+  let curlAmount=14, velDiss=0.992, dyeDiss=0.9978;
+  dyeDiss=0.985+persistence*0.0145;                       // slider de persistência (transparência)
+  if(live||autoOn){
+    const d=live?readDescriptors():autoSynthetic(now);
+    curlAmount=8+d.flatness*46+d.inharmonicity*22;        // planura + inarmonicidade → vorticity
+    updateMfccStats(d);
+    audioBrush(d,now,dt);
+    updateMeters(d);
+  } else { susView*=0.95; updateMeters(null); }
+  curlSm+=(curlAmount-curlSm)*0.1;
+  step(dt, curlSm, velDiss, dyeDiss);
+  display();
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- interação manual (traçar) ---------------- */
+let tracing=false,lastX=0,lastY=0,mColor=[0,0,0],mDownT=0;
+function toUV(e){ const r=canvas.getBoundingClientRect();
+  return [ (e.clientX-r.left)/r.width, 1-(e.clientY-r.top)/r.height ]; }
+function newMouseColor(){ if(colorMode!=='auto') return PIG[colorMode];
+  junIdx=(junIdx+5)%12; return SCRIABIN[junIdx]; }     // auto: cicla as 12 cores de Scriabin
+function trace(e,now){ const [x,y]=toUV(e);
+  const dx=(x-lastX)*1200, dy=(y-lastY)*1200; lastX=x; lastY=y;
+  const held=Math.min((now-mDownT)/1000,SUSTAIN_CAP)/SUSTAIN_CAP;   // segurar → engrossa
+  const rad=0.006 + held*0.03, amt=0.45 + held*0.3;
+  splat(x,y,dx,dy,[mColor[0]*amt,mColor[1]*amt,mColor[2]*amt],rad); hideHint();
+}
+canvas.addEventListener('pointerdown',e=>{ tracing=true; mDownT=performance.now();
+  mColor=newMouseColor(); const[x,y]=toUV(e); lastX=x; lastY=y; trace(e,mDownT); });
+canvas.addEventListener('pointermove',e=>{ if(tracing) trace(e,performance.now()); });
+window.addEventListener('pointerup',()=>{tracing=false;});
+
+/* ---------------- controles ---------------- */
+const btnMic=document.getElementById('btn-mic'),btnFile=document.getElementById('btn-file'),
+  btnPlay=document.getElementById('btn-play'),btnAuto=document.getElementById('btn-auto'),
+  btnWash=document.getElementById('btn-wash'),btnBg=document.getElementById('btn-bg'),
+  fileInput=document.getElementById('file-input');
+function hideHint(){document.getElementById('hint').classList.add('gone');}
+async function toggleMic(){ initCtx(); await actx.resume();
+  if(source==='mic'){ if(micStream)micStream.getTracks().forEach(t=>t.stop());
+    if(micNode)micNode.disconnect(); micStream=micNode=null; source=null;
+    btnMic.classList.remove('active'); return; }
+  try{ micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    micNode=actx.createMediaStreamSource(micStream); micNode.connect(analyser);
+    if(!player.paused)player.pause(); btnPlay.classList.remove('active');
+    source='mic'; btnMic.classList.add('active'); hideHint();
+  }catch(err){ document.querySelector('#hint .sub').textContent=I18N[LANG].micErr; } }
+fileInput.addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f)return;
+  initCtx(); await actx.resume();
+  if(!mediaNode){ mediaNode=actx.createMediaElementSource(player);
+    mediaNode.connect(analyser); mediaNode.connect(actx.destination); }
+  if(source==='mic')toggleMic();
+  player.src=URL.createObjectURL(f); await player.play();
+  source='file'; btnPlay.disabled=false; btnPlay.classList.add('active');
+  setLang(LANG); hideHint(); });
+async function togglePlay(){ if(source!=='file')return;
+  if(player.paused){ await actx.resume(); await player.play(); btnPlay.classList.add('active'); }
+  else { player.pause(); btnPlay.classList.remove('active'); } setLang(LANG); }
+player.addEventListener('ended',()=>{btnPlay.classList.remove('active');setLang(LANG);});
+function toggleAuto(){ autoOn=!autoOn; btnAuto.classList.toggle('active',autoOn); if(autoOn)hideHint(); }
+function wash(){ clearDye(); document.getElementById('hint').classList.remove('gone'); }
+function cycleBG(){ bgIndex=(bgIndex+1)%BG.length; applyBG(); }
+btnMic.addEventListener('click',toggleMic); btnFile.addEventListener('click',()=>fileInput.click());
+btnPlay.addEventListener('click',togglePlay); btnAuto.addEventListener('click',toggleAuto);
+btnWash.addEventListener('click',wash); btnBg.addEventListener('click',cycleBG);
+document.querySelectorAll('.sw').forEach(sw=>sw.addEventListener('click',()=>{
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('active'));
+  sw.classList.add('active');
+  colorMode = sw.dataset.mode==='auto'?'auto':parseInt(sw.dataset.mode,10);
+}));
+const btnPos=document.getElementById('btn-pos'), rngPers=document.getElementById('rng-pers'), rngSens=document.getElementById('rng-sens');
+function posLabel(){ const m={radial:'Radial',hybrid:'Híbrido',timbre:'Timbre'}; document.getElementById('pos-lab').textContent=m[posMode]; }
+btnPos.addEventListener('click',()=>{ posMode = posMode==='radial'?'hybrid' : posMode==='hybrid'?'timbre' : 'radial'; posLabel(); });
+rngPers.addEventListener('input',()=>{ persistence=rngPers.value/100; });
+rngSens.addEventListener('input',()=>{ sensitivity=rngSens.value/100; });
+
+/* ---------------- rastreio por câmera: MÃOS ou ROSTO (MediaPipe Tasks Vision) ----------------
+   Modos cíclicos: 'off' → 'hands' → 'face' → 'off'.
+   MÃOS  — palma aberta pinta/arrasta; mão fechada solta; duas mãos = dois pincéis.
+   ROSTO — contorno (oval), olhos, sobrancelhas, boca, íris e maçãs viram emissores de tinta;
+           a tinta responde ao MOVIMENTO de cada ponto (mexer o rosto, abrir a boca, piscar…).
+   A janela da câmera é arrastável, minimizável e permanece visível na tela limpa (tecla H). */
+let handLandmarker=null, faceLandmarker=null, camStream=null, trackMode='off', trackRAF=0, visionLib=null;
+const camEl=document.getElementById('cam'), camWrap=document.getElementById('cam-wrap'),
+      camHead=document.getElementById('cam-head'), camMin=document.getElementById('cam-min'),
+      camOv=document.getElementById('cam-ov'), camTitle=document.getElementById('cam-title'),
+      btnTrack=document.getElementById('btn-track'), trackLab=document.getElementById('track-lab');
+const ovx=camOv.getContext('2d');
+
+/* ---- mãos ---- */
+const handState=[{open:false,px:0,py:0,downT:0,color:[0,0,0]},
+                 {open:false,px:0,py:0,downT:0,color:[0,0,0]}];
+function fingersExtended(lm){ const w=lm[0]; let c=0;          // conta dedos estendidos
+  for(const pr of [[8,6],[12,10],[16,14],[20,18]]){
+    const t=lm[pr[0]],p=lm[pr[1]];
+    if(Math.hypot(t.x-w.x,t.y-w.y) > Math.hypot(p.x-w.x,p.y-w.y)*1.05) c++; }
+  return c; }
+function paintHand(hs,x,y){                                    // como o mouse, mas pela mão
+  const dx=(x-hs.px)*1100, dy=(y-hs.py)*1100;
+  const held=Math.min((performance.now()-hs.downT)/1000,SUSTAIN_CAP)/SUSTAIN_CAP;
+  const rad=0.006+held*0.03, amt=0.45+held*0.3;
+  splat(x,y,dx,dy,[hs.color[0]*amt,hs.color[1]*amt,hs.color[2]*amt],rad);
+  hs.px=x; hs.py=y; hideHint();
+}
+
+/* ---- rosto ---- (constantes calibráveis ao vivo) */
+let faceIdx=[], facePrev=new Map();
+const FACE_MOVE_MIN = 0.0016;   // movimento mínimo (uv) p/ um ponto emitir tinta
+const FACE_VEL      = 110;      // ganho velocidade → quantidade de tinta
+const FACE_RAD      = 0.0072;   // raio fino dos pontos faciais
+const FACE_FLOOR    = 0.04;     // chance de emitir mesmo quase parado (mantém o traçado vivo)
+const FACE_MAX      = MOBILE?60:130;  // teto de splats por quadro (desempenho)
+function buildFaceIdx(FL){ const s=new Set();
+  const add=cs=>{ if(cs) for(const c of cs){ s.add(c.start); s.add(c.end); } };
+  add(FL.FACE_LANDMARKS_FACE_OVAL);                                   // contorno
+  add(FL.FACE_LANDMARKS_LEFT_EYE);  add(FL.FACE_LANDMARKS_RIGHT_EYE); // olhos
+  add(FL.FACE_LANDMARKS_LEFT_EYEBROW); add(FL.FACE_LANDMARKS_RIGHT_EYEBROW);
+  add(FL.FACE_LANDMARKS_LIPS);                                        // boca
+  add(FL.FACE_LANDMARKS_LEFT_IRIS); add(FL.FACE_LANDMARKS_RIGHT_IRIS);// íris (pupilas)
+  for(const i of [50,280,101,330,234,454,93,323,205,425,116,345]) s.add(i); // maçãs/laterais
+  let arr=[...s];
+  if(MOBILE) arr=arr.filter((_,k)=>k%2===0);   // subamostra no celular
+  return arr; }
+
+/* ---- overlay: desenha os pontos rastreados (espelhados) sobre o vídeo ---- */
+function syncOv(){ const r=camOv.getBoundingClientRect();
+  if(r.width && (camOv.width!==(r.width|0) || camOv.height!==(r.height|0))){ camOv.width=r.width|0; camOv.height=r.height|0; } }
+function clearOv(){ syncOv(); ovx.clearRect(0,0,camOv.width,camOv.height); }
+function drawHandsOv(hands){ syncOv(); const w=camOv.width,h=camOv.height; ovx.clearRect(0,0,w,h);
+  ovx.fillStyle='rgba(255,255,255,.85)';
+  for(const lm of hands) for(const p of lm){ ovx.beginPath(); ovx.arc((1-p.x)*w,p.y*h,2.1,0,6.283); ovx.fill(); } }
+function drawFaceOv(lm){ syncOv(); const w=camOv.width,h=camOv.height; ovx.clearRect(0,0,w,h);
+  ovx.fillStyle='rgba(255,255,255,.8)';
+  for(const id of faceIdx){ const p=lm[id]; if(!p)continue; ovx.beginPath(); ovx.arc((1-p.x)*w,p.y*h,1.4,0,6.283); ovx.fill(); } }
+
+/* ---- laço unificado ---- */
+function trackLoop(){
+  if(trackMode==='off') return;
+  if(camEl.readyState>=2){
+    const now=performance.now(), showOv=!camWrap.classList.contains('min');
+    if(trackMode==='hands' && handLandmarker){
+      let res=null; try{ res=handLandmarker.detectForVideo(camEl,now); }catch(_){}
+      const hands=(res&&res.landmarks)||[];
+      for(let i=0;i<2;i++){ const hs=handState[i];
+        if(i<hands.length){ const lm=hands[i];
+          const ext=fingersExtended(lm), palm=lm[9];
+          const x=Math.max(0.03,Math.min(0.97, 1-palm.x));
+          const y=Math.max(0.03,Math.min(0.97, 1-palm.y));
+          const wantOpen = hs.open? ext>=2 : ext>=3;           // histerese abre≥3 / fecha≤1
+          if(wantOpen){
+            if(!hs.open){ hs.open=true; hs.color=newMouseColor(); hs.downT=now; hs.px=x; hs.py=y; }
+            paintHand(hs,x,y);
+          } else hs.open=false;
+        } else hs.open=false;
+      }
+      if(showOv) drawHandsOv(hands);
+    } else if(trackMode==='face' && faceLandmarker){
+      let res=null; try{ res=faceLandmarker.detectForVideo(camEl,now); }catch(_){}
+      const faces=(res&&res.faceLandmarks)||[];
+      if(faces.length){ const lm=faces[0]; const col=newMouseColor(); let n=0;
+        for(let k=0;k<faceIdx.length;k++){ const id=faceIdx[k], p=lm[id]; if(!p)continue;
+          const x=Math.max(0.02,Math.min(0.98, 1-p.x)), y=Math.max(0.02,Math.min(0.98, 1-p.y));
+          const pv=facePrev.get(id); let vx=0,vy=0; if(pv){ vx=x-pv.x; vy=y-pv.y; } facePrev.set(id,{x,y});
+          const sp=Math.hypot(vx,vy);
+          if(sp<FACE_MOVE_MIN && Math.random()>FACE_FLOOR) continue;   // sobretudo dirigido pelo movimento
+          const amt=Math.min(0.5, 0.10 + sp*FACE_VEL);
+          splat(x,y,vx*1100,vy*1100,[col[0]*amt,col[1]*amt,col[2]*amt],FACE_RAD);
+          if(++n>=FACE_MAX) break;
+        }
+        hideHint();
+        if(showOv) drawFaceOv(lm);
+      } else if(showOv) clearOv();
+    }
+  }
+  trackRAF=requestAnimationFrame(trackLoop);
+}
+
+/* ---- ciclo de vida da câmera + modelos ---- */
+async function ensureVision(){ if(visionLib) return visionLib;
+  const V='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  const vision=await import(V+'/vision_bundle.mjs');
+  const fs=await vision.FilesetResolver.forVisionTasks(V+'/wasm');
+  visionLib={vision,fs}; return visionLib; }
+async function startCamera(){ if(camStream) return;
+  camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:640,height:480}});
+  camEl.srcObject=camStream; await camEl.play(); }
+function stopCamera(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  camWrap.style.display='none'; }
+async function setTrack(mode){
+  if(mode===trackMode) return;
+  if(mode==='off'){ trackMode='off'; cancelAnimationFrame(trackRAF);
+    handState[0].open=handState[1].open=false; stopCamera(); updateTrackUI(); return; }
+  try{
+    await startCamera();
+    const {vision,fs}=await ensureVision();
+    if(mode==='hands' && !handLandmarker){
+      handLandmarker=await vision.HandLandmarker.createFromOptions(fs,{
+        baseOptions:{ modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate:'GPU' },
+        numHands:2, runningMode:'VIDEO' });
+    }
+    if(mode==='face' && !faceLandmarker){
+      faceLandmarker=await vision.FaceLandmarker.createFromOptions(fs,{
+        baseOptions:{ modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task', delegate:'GPU' },
+        numFaces:1, runningMode:'VIDEO', outputFaceBlendshapes:false, outputFacialTransformationMatrixes:false });
+      faceIdx=buildFaceIdx(vision.FaceLandmarker); facePrev.clear();
+    }
+    cancelAnimationFrame(trackRAF);
+    trackMode=mode; camWrap.style.display='block'; clearOv(); hideHint(); updateTrackUI(); trackLoop();
+  }catch(err){ console.error(err); trackMode='off'; updateTrackUI();
+    document.querySelector('#hint .sub').textContent =
+      (LANG==='pt'?'Não foi possível iniciar a câmera / rastreio.':'Could not start camera / tracking.');
+    document.getElementById('hint').classList.remove('gone');
+    stopCamera(); }
+}
+function updateTrackUI(){ const d=I18N[LANG];
+  if(trackLab) trackLab.textContent = trackMode==='hands'?d.t_hands : trackMode==='face'?d.t_face : d.t_off;
+  if(btnTrack) btnTrack.classList.toggle('active', trackMode!=='off');
+  if(camTitle) camTitle.textContent = (trackMode==='hands'?d.t_hands : trackMode==='face'?d.t_face : d.cam_title); }
+btnTrack.addEventListener('click',()=>{
+  const next = trackMode==='off'?'hands' : trackMode==='hands'?'face' : 'off';
+  setTrack(next); });
+
+/* minimizar / restaurar a janela da câmera */
+camMin.addEventListener('click',e=>{ e.stopPropagation();
+  const min=camWrap.classList.toggle('min');
+  camMin.textContent = min?'▢':'–'; if(min) clearOv(); });
+
+/* arrastar a janela da câmera pelo cabeçalho */
+(function(){ let drag=false,ox=0,oy=0;
+  camHead.addEventListener('pointerdown',e=>{ if(e.target===camMin) return; drag=true;
+    const r=camWrap.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top;
+    camWrap.style.bottom='auto'; try{ camHead.setPointerCapture(e.pointerId); }catch(_){} });
+  camHead.addEventListener('pointermove',e=>{ if(!drag) return;
+    camWrap.style.left=Math.max(4,Math.min(window.innerWidth-camWrap.offsetWidth-4, e.clientX-ox))+'px';
+    camWrap.style.top =Math.max(4,Math.min(window.innerHeight-32, e.clientY-oy))+'px'; });
+  window.addEventListener('pointerup',()=>{ drag=false; });
+})();
+
+/* ---------------- ocultar a barra de controle + visão limpa (tecla H) ---------------- */
+document.getElementById('bar-hide').addEventListener('click',()=>{
+  document.getElementById('bar').style.display='none';
+  document.getElementById('bar-show').style.display='block'; });
+document.getElementById('bar-show').addEventListener('click',()=>{
+  document.getElementById('bar-show').style.display='none';
+  document.getElementById('bar').style.display='flex'; });
+window.addEventListener('keydown',e=>{ if(e.key==='h'||e.key==='H') document.body.classList.toggle('clean'); });
+
+/* ---------------- painel: flutuante (arrastável) + ocultável ---------------- */
+(function(){ const m=document.getElementById('meters'), head=document.getElementById('meters-head');
+  let drag=false,ox=0,oy=0;
+  head.addEventListener('pointerdown',e=>{ if(e.target.id==='meters-hide')return;
+    drag=true; const r=m.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top;
+    m.style.right='auto'; m.style.left=r.left+'px'; m.style.top=r.top+'px';
+    head.setPointerCapture(e.pointerId); });
+  head.addEventListener('pointermove',e=>{ if(!drag)return;
+    let x=Math.max(4,Math.min(window.innerWidth-m.offsetWidth-4, e.clientX-ox));
+    let y=Math.max(4,Math.min(window.innerHeight-m.offsetHeight-4, e.clientY-oy));
+    m.style.left=x+'px'; m.style.top=y+'px'; });
+  head.addEventListener('pointerup',e=>{drag=false; try{head.releasePointerCapture(e.pointerId);}catch(_){}});
+})();
+document.getElementById('meters-hide').addEventListener('click',()=>{
+  document.getElementById('meters').style.display='none';
+  document.getElementById('meters-show').style.display='block'; });
+document.getElementById('meters-show').addEventListener('click',()=>{
+  document.getElementById('meters-show').style.display='none';
+  document.getElementById('meters').style.display='block'; });
+
+/* ---------------- resize + boot ---------------- */
+function resize(){ const dpr=Math.min(window.devicePixelRatio||1, MOBILE?1.5:2);
+  canvas.width=Math.round(window.innerWidth*dpr); canvas.height=Math.round(window.innerHeight*dpr);
+  canvas.style.width=window.innerWidth+'px'; canvas.style.height=window.innerHeight+'px'; }
+window.addEventListener('resize',resize);
+
+setLang('pt'); applyBG();
+if(MOBILE||window.innerWidth<760){ document.getElementById('meters').style.display='none';
+  document.getElementById('meters-show').style.display='block'; }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+if(glOK){ resize(); initGL(); requestAnimationFrame(frame); }
+</script>
+</body>
+</html>
