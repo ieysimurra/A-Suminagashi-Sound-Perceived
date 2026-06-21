@@ -126,25 +126,47 @@
   .on-dark #hint .big{ color:rgba(236,231,219,.6) }
   .on-dark #hint .sub{ color:rgba(236,231,219,.45) }
   @media (max-width:760px){
-    #title{top:14px;left:16px}
-    #title .name{font-size:20px}
+    #title{top:12px;left:14px}
+    #title .name{font-size:18px}
     #title .roman{font-size:8px;letter-spacing:.3em}
-    #lang{top:14px;right:14px;padding:6px 9px}
-    #meters{width:186px;right:14px;top:52px}
-    #meters-show{top:52px;right:14px}
-    #bar{gap:3px;padding:7px 8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
-      max-width:94vw;border-radius:14px;bottom:calc(14px + env(safe-area-inset-bottom))}
+    #lang{top:12px;right:12px;padding:6px 9px}
+    #meters{width:min(74vw,200px);right:12px;top:48px}
+    #meters-show{top:48px;right:12px}
+    /* barra inferior: faixa rolável na horizontal, começando da esquerda (nada fica inacessível) */
+    #bar{gap:3px;padding:6px 8px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;touch-action:pan-x;justify-content:flex-start;
+      left:50%;transform:translateX(-50%);max-width:calc(100vw - 16px);
+      border-radius:14px;bottom:calc(10px + env(safe-area-inset-bottom))}
     #bar::-webkit-scrollbar{display:none}
+    #bar input[type=range]{touch-action:none}     /* arrastar o slider não rola a barra */
     .btn{min-width:0;padding:7px 8px}
     .btn .lab{font-size:10px}
     .ctl{padding:0 3px}.ctl-l{font-size:7px}
-    #rng-pers,#rng-sens{width:56px}
-    .sw{width:21px;height:21px}#swatches{gap:5px}
-    .sep{height:26px}
-    #bar-show{bottom:calc(12px + env(safe-area-inset-bottom))}
-    #cam-wrap{width:144px;bottom:calc(74px + env(safe-area-inset-bottom))}
-    #cam-body{width:144px;height:108px}
+    #rng-pers,#rng-sens{width:54px}
+    .sw{width:21px;height:21px}#swatches{gap:5px;padding:0 2px}
+    .sep{height:24px}
+    #bar-show{bottom:calc(10px + env(safe-area-inset-bottom))}
+    /* câmera: canto superior esquerdo (longe da barra inferior); arrastável e minimizável */
+    #cam-wrap{width:128px;left:12px;top:46px;bottom:auto}
+    #cam-body{width:128px;height:96px}
+    #hint .big{font-size:16px}#hint .sub{font-size:10px}
     #foot{display:none}
+  }
+  /* paisagem em telas baixas: comprime a UI e elimina sobreposições */
+  @media (orientation:landscape) and (max-height:480px){
+    #title{top:8px;left:10px}#title .name{font-size:15px}#title .roman{display:none}
+    #lang{top:8px;right:10px;padding:5px 8px}
+    #meters{top:8px;right:10px;width:min(42vw,180px)}
+    #meters-show{top:8px;right:10px}
+    #bar{padding:5px 7px;gap:2px;max-width:calc(100vw - 12px);
+      bottom:calc(6px + env(safe-area-inset-bottom))}
+    .btn{padding:6px 7px}.btn .lab{font-size:9px}
+    #rng-pers,#rng-sens{width:46px}
+    .sw{width:18px;height:18px}.sep{height:22px}
+    /* câmera no topo-centro: não disputa com título (esq.) nem painel (dir.) */
+    #cam-wrap{width:108px;left:50%;top:8px;bottom:auto;transform:translateX(-50%)}
+    #cam-body{width:108px;height:74px}
+    #hint{top:38%}#hint .big{font-size:14px}
   }
 </style>
 </head>
@@ -921,7 +943,7 @@ camMin.addEventListener('click',e=>{ e.stopPropagation();
 (function(){ let drag=false,ox=0,oy=0;
   camHead.addEventListener('pointerdown',e=>{ if(e.target===camMin) return; drag=true;
     const r=camWrap.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top;
-    camWrap.style.bottom='auto'; try{ camHead.setPointerCapture(e.pointerId); }catch(_){} });
+    camWrap.style.bottom='auto'; camWrap.style.transform='none'; try{ camHead.setPointerCapture(e.pointerId); }catch(_){} });
   camHead.addEventListener('pointermove',e=>{ if(!drag) return;
     camWrap.style.left=Math.max(4,Math.min(window.innerWidth-camWrap.offsetWidth-4, e.clientX-ox))+'px';
     camWrap.style.top =Math.max(4,Math.min(window.innerHeight-32, e.clientY-oy))+'px'; });
@@ -962,6 +984,11 @@ function resize(){ const dpr=Math.min(window.devicePixelRatio||1, MOBILE?1.5:2);
   canvas.width=Math.round(window.innerWidth*dpr); canvas.height=Math.round(window.innerHeight*dpr);
   canvas.style.width=window.innerWidth+'px'; canvas.style.height=window.innerHeight+'px'; }
 window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',()=>{
+  /* volta a câmera para a posição padrão do CSS (evita ficar fora da tela após girar) */
+  camWrap.style.left=camWrap.style.top=camWrap.style.bottom=camWrap.style.transform='';
+  setTimeout(resize,250);
+});
 
 setLang('pt'); applyBG();
 if(MOBILE||window.innerWidth<760){ document.getElementById('meters').style.display='none';

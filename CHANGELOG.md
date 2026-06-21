@@ -8,6 +8,7 @@ Formato baseado em *Keep a Changelog*. Versões marcam saltos de arquitetura/fea
 - **Janela da câmera** redesenhada: cabeçalho com título, **arrastável** pela barra superior e **minimizável** (–/▢), com **overlay** que desenha os pontos rastreados sobre o vídeo espelhado.
 - A janela da câmera **permanece visível na tela limpa** (tecla H), podendo ser minimizada ou não.
 - Subamostragem dos pontos faciais e teto de splats por quadro no mobile (desempenho).
+- **Responsividade mobile** revista: barra inferior rolável a partir da esquerda (nenhum controle fica inacessível), sliders que não disputam com a rolagem ao toque, câmera reposicionada para fora da barra (canto superior), tratamento dedicado para **paisagem** em telas baixas e reposicionamento automático ao girar o aparelho.
 
 ## v2.7 — mobile / PWA
 - Versão instalável (Web App Manifest + Service Worker, abre offline exceto rastreio de mãos).
