@@ -2,6 +2,11 @@
 
 Formato baseado em *Keep a Changelog*. Versões marcam saltos de arquitetura/feature.
 
+## v2.8.1 — estabilidade do fluido no mobile
+- `dt` clampado em **1/60** (era 1/30): impede a advecção exagerada quando o FPS cai no celular — fim do "fluido correndo numa direção, rápido".
+- Amortecimento (dissipação) de velocidade e tinta agora é **independente do FPS** (`pow(base, dt*60)`), consistente entre dispositivos.
+- Velocidade amortece um pouco mais no mobile e as **iterações de pressão** subiram de 16 → 20 (remove melhor a divergência → menos deriva direcional).
+
 ## v2.8 — rosto + janela de câmera
 - **Rastreio facial** como alternativa às mãos (MediaPipe FaceLandmarker): contorno (oval), olhos, sobrancelhas, boca, íris e maçãs do rosto viram emissores de tinta dirigidos pelo movimento de cada ponto.
 - Botão de rastreio agora cicla **Off → Mãos → Rosto**; a câmera é compartilhada e os modelos carregam sob demanda.

@@ -218,7 +218,7 @@
 
   <div id="hint"><div class="big" data-i18n="hint_big">Pinte com som</div>
     <div class="sub" data-i18n="hint">Ative o microfone, carregue um áudio ou trace a tela</div></div>
-  <div id="foot">It Looks Like Suminagashi · v2.8</div>
+  <div id="foot">It Looks Like Suminagashi · v2.8.1</div>
   <div id="cam-wrap">
     <div id="cam-head"><span id="cam-title">câmera</span><button id="cam-min" title="Minimizar / Minimize">–</button></div>
     <div id="cam-body"><video id="cam" playsinline muted></video><canvas id="cam-ov"></canvas></div>
@@ -335,7 +335,7 @@ if(!glOK) showErr();
 
 const MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.maxTouchPoints>1 && Math.min(screen.width,screen.height)<820);
-const SIM_RES=128, DYE_RES=MOBILE?512:1024, PRESSURE_ITER=MOBILE?16:24;
+const SIM_RES=128, DYE_RES=MOBILE?512:1024, PRESSURE_ITER=MOBILE?20:24;
 let velocity,dye,divergence,curlFBO,pressure;
 let progAdvect,progDiverg,progCurl,progVort,progPressure,progGradient,progSplat,progDisplay,progClear;
 let quadVAO;
@@ -710,10 +710,12 @@ function autoSynthetic(now){ autoPhase+=0.012;
 let lastT=performance.now();
 let curlSm=18;
 function frame(){
-  const now=performance.now(); let dt=(now-lastT)/1000; lastT=now; if(dt>1/30)dt=1/30;
+  const now=performance.now(); let dt=(now-lastT)/1000; lastT=now; if(dt>1/60)dt=1/60;
   const live=source&&actx&&(source==='mic'||(source==='file'&&!player.paused));
-  let curlAmount=14, velDiss=0.992, dyeDiss=0.9978;
-  dyeDiss=0.985+persistence*0.0145;                       // slider de persistência (transparência)
+  const f60=dt*60;                                       // 1.0 a 60fps → amortecimento estável entre dispositivos
+  let curlAmount=14;
+  let velDiss=Math.pow(MOBILE?0.985:0.992, f60);          // mobile amortece um pouco mais (mata a deriva)
+  let dyeDiss=Math.pow(0.985+persistence*0.0145, f60);   // slider de persistência (transparência)
   if(live||autoOn){
     const d=live?readDescriptors():autoSynthetic(now);
     curlAmount=8+d.flatness*46+d.inharmonicity*22;        // planura + inarmonicidade → vorticity
